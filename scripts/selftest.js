@@ -58,20 +58,35 @@ await test('embeds do plano respeitam limites', () => {
     sections: Array.from({ length: 40 }, (_, i) => ({ title: `Seção ${i}`, items: Array.from({ length: 30 }, (_, j) => `item ${j} `.repeat(5)) })),
     destructive_actions: [{ type: 'channel', id: '1', name: 'geral', reason: 'substituído' }],
     warnings: ['aviso'],
+    style: { language: 'pt-BR', symbols: '꒰ ꒱ moldura · ♡ marcador', examples: ['꒰ 🌸 informações ꒱'] },
   };
   const embeds = planEmbeds(plan, { mode: 'montar', requestedBy: 'user#0' });
   const total = embeds.reduce((n, e) => n + JSON.stringify(e.toJSON()).length, 0);
   assert.ok(embeds.length <= 10);
   for (const e of embeds) assert.ok((e.data.fields?.length ?? 0) <= 25);
   assert.ok(total < 9000);
+  assert.equal(embeds[0].data.fields[0].name, '🎨 Estilo');
   assert.ok(progressLine({ ok: true, tool: 'create_role', output: { name: '👑 Dono' } }).includes('Dono'));
   summaryEmbed('ok', { created: 1, edited: 0, deleted: 0, messages: 0, errors: 0, actions: 1 }, { limitReached: false, usage: { input: 1, output: 1, cacheRead: 0 } });
+});
+
+await test('preferência "criativo" libera a escolha dos símbolos', async () => {
+  const mk = (symbols) =>
+    new ServerAgent({ guild: { id: '1', name: 'G' }, user: { id: '2', tag: 'u' }, mode: 'montar', request: 'x', style: { symbols } })
+      .messages[0].content;
+  assert.match(mk('criativo'), /liberdade criativa/);
+  assert.match(mk('seja criativo com os símbolos'), /liberdade criativa/);
+  assert.match(mk('criativo, mas use ✦'), /inclua-os no kit/);
+  assert.match(mk('・ ┃'), /use exatamente estes/);
+  assert.match(mk(null), /escolha você um kit/);
 });
 
 await test('slash commands serializam', () => {
   for (const c of commands.values()) {
     const json = c.data.toJSON();
-    assert.ok(json.name && json.options.length === 1);
+    assert.equal(json.options.length, 3);
+    assert.deepEqual(json.options.map((o) => o.name).slice(1), ['simbolos', 'idioma']);
+    assert.equal(json.options[1].required ?? false, false);
   }
 });
 
@@ -90,7 +105,13 @@ await test('loop agêntico: plano → bloqueio de escrita → aprovação → ex
           type: 'tool_use',
           id: 't3',
           name: 'submit_plan',
-          input: { title: 'Plano', summary: 'Resumo', sections: [{ title: 'Cargos', items: ['👑 Dono'] }], destructive_actions: [] },
+          input: {
+            title: 'Plano',
+            summary: 'Resumo',
+            style: { language: 'português', symbols: '・ separador', examples: ['📢・avisos'] },
+            sections: [{ title: 'Cargos', items: ['👑 Dono'] }],
+            destructive_actions: [],
+          },
         },
       ],
     },
@@ -128,11 +149,15 @@ await test('loop agêntico: plano → bloqueio de escrita → aprovação → ex
     user: { id: '2', tag: 'user#0' },
     mode: 'montar',
     request: 'um servidor',
+    style: { symbols: '「 」 ✦', language: 'English' },
     invokingChannelId: '3',
     client: fakeClient,
   });
 
   const planning = await agent.runPlanning();
+  // Preferências de estilo chegam ao Claude na primeira mensagem.
+  assert.match(requests[0].messages[0].content, /Símbolos: "「 」 ✦" — use exatamente estes/);
+  assert.match(requests[0].messages[0].content, /Idioma do conteúdo do servidor: English/);
   assert.equal(planning.plan.title, 'Plano');
   // A 2ª requisição recebeu o erro de fase para create_role.
   const blocked = requests[1].messages.at(-1).content[0];

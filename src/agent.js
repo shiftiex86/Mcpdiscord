@@ -36,12 +36,13 @@ const APPROVAL_MESSAGE = (deletions) =>
  * mantém o cache do prompt e os blocos de thinking válidos de uma fase para a outra.
  */
 export class ServerAgent {
-  constructor({ guild, user, mode, request, invokingChannelId, onAction = () => {}, client = anthropic }) {
+  constructor({ guild, user, mode, request, style = {}, invokingChannelId, onAction = () => {}, client = anthropic }) {
     this.client = client;
     this.guild = guild;
     this.user = user;
     this.mode = mode; // 'montar' | 'editar'
     this.request = request;
+    this.style = { symbols: style.symbols ?? null, language: style.language ?? null };
     this.invokingChannelId = invokingChannelId;
     this.onAction = onAction;
 
@@ -72,8 +73,26 @@ export class ServerAgent {
       this.request,
       '"""',
       '',
+      'Preferências de estilo (aplique conforme o GUIA DE ESTILO):',
+      this.#symbolsLine(),
+      this.style.language
+        ? `- Idioma do conteúdo do servidor: ${this.style.language}`
+        : '- Idioma do conteúdo do servidor: não informado — use o idioma em que o pedido foi escrito.',
+      '- Emojis, cores, nomes e textos: você escolhe, combinando com o tema (salvo pedido explícito).',
+      '',
       'Fase atual: PLANEJAMENTO. Leia a estrutura com get_server_structure e envie o plano com submit_plan.',
     ].join('\n');
+  }
+
+  #symbolsLine() {
+    const s = this.style.symbols;
+    if (!s) {
+      return '- Símbolos: não informados na opção — se o pedido mencionar símbolos, siga-o; senão, escolha você um kit coerente com o tema.';
+    }
+    if (/(criativ|livre|aleat[oó]ri|random|creative|surpreend|voc[eê] escolhe|tanto faz|qualquer|escolha voc)/i.test(s)) {
+      return `- Símbolos: "${s}" — liberdade criativa: escolha você um kit coerente com o tema, a partir da biblioteca (se o texto também citar símbolos específicos, inclua-os no kit).`;
+    }
+    return `- Símbolos: "${s}" — use exatamente estes (e só estes) como decoração, distribuídos pelos papéis do guia.`;
   }
 
   // ---------------------------------------------------------------------------

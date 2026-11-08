@@ -12,6 +12,24 @@ export default {
       properties: {
         title: { type: 'string', description: 'Título curto do plano (máx. 200 caracteres).' },
         summary: { type: 'string', description: 'Resumo em 1–3 frases do que será feito.' },
+        style: {
+          type: 'object',
+          description: 'Estilo escolhido para o servidor (veja o GUIA DE ESTILO). Aparece no topo do plano.',
+          properties: {
+            language: { type: 'string', description: 'Idioma do conteúdo do servidor.' },
+            symbols: {
+              type: 'string',
+              description: 'Kit de símbolos e o papel de cada um, ex.: "・ separador de canal · 「 」 moldura de categoria · ✦ marcador".',
+            },
+            examples: {
+              type: 'array',
+              items: { type: 'string' },
+              description: '2–4 nomes finais de exemplo (categoria, canal, cargo, separador de cargo).',
+            },
+          },
+          required: ['language', 'symbols', 'examples'],
+          additionalProperties: false,
+        },
         sections: {
           type: 'array',
           description:
@@ -48,7 +66,7 @@ export default {
           description: 'Limitações e avisos (ex.: cargo do bot baixo, Comunidade desativada, pedidos impossíveis).',
         },
       },
-      required: ['title', 'summary', 'sections', 'destructive_actions'],
+      required: ['title', 'summary', 'style', 'sections', 'destructive_actions'],
       additionalProperties: false,
     },
   },

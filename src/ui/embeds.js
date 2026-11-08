@@ -39,6 +39,14 @@ export function statusEmbed(title, description, color = COLORS.working) {
  */
 export function planEmbeds(plan, { mode, requestedBy }) {
   const fields = [];
+  if (plan.style) {
+    const lines = [
+      `**Idioma:** ${plan.style.language}`,
+      `**Símbolos:** ${plan.style.symbols}`,
+      ...(plan.style.examples?.length ? [`**Exemplos:** ${plan.style.examples.map((e) => `\`${e}\``).join('  ')}`] : []),
+    ];
+    chunkLines(lines).forEach((value, idx) => fields.push({ name: idx ? '🎨 Estilo (cont.)' : '🎨 Estilo', value }));
+  }
   for (const section of plan.sections) {
     const chunks = chunkLines(section.items.map((i) => `• ${i}`));
     chunks.forEach((value, idx) => fields.push({ name: truncate(idx ? `${section.title} (cont.)` : section.title, 256), value }));

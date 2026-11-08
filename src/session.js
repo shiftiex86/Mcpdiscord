@@ -95,7 +95,7 @@ function describeError(err) {
 }
 
 /** Fluxo completo de /montar e /editar: plano → confirmação → execução → resumo. */
-export async function runSession(interaction, mode, request) {
+export async function runSession(interaction, mode, request, style = {}) {
   const { guild, user } = interaction;
   const scope = `session:${guild.id}`;
 
@@ -128,7 +128,7 @@ export async function runSession(interaction, mode, request) {
     return;
   }
   activeSessions.add(guild.id);
-  logger.info(scope, `/${mode} iniciado por ${user.tag}`, { request });
+  logger.info(scope, `/${mode} iniciado por ${user.tag}`, { request, style });
 
   let reporter = null;
   try {
@@ -138,7 +138,9 @@ export async function runSession(interaction, mode, request) {
       embeds: [
         statusEmbed(
           '🧠 Analisando o servidor e montando o plano…',
-          `**Pedido:** ${request}\n\nIsso pode levar alguns instantes.` +
+          `**Pedido:** ${request}\n` +
+            `**Símbolos:** ${style.symbols ?? 'o Claude escolhe'} • **Idioma:** ${style.language ?? 'o do pedido'}\n\n` +
+            'Isso pode levar alguns instantes.' +
             (recommendedMissing.length ? `\n\n⚠️ O bot não tem: ${recommendedMissing.join(', ')}.` : ''),
         ),
       ],
@@ -149,6 +151,7 @@ export async function runSession(interaction, mode, request) {
       user,
       mode,
       request,
+      style,
       invokingChannelId: interaction.channelId,
       onAction: (event) =>
         reporter?.push(event, (lines) => ({

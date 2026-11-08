@@ -56,9 +56,26 @@ O Discord não deixa um bot conceder, em cargos ou permissões de canal, uma per
 - **Logs:** cada ação, com o input e o resultado ou erro, é registrada no console e em `logs/actions.log` (um JSON por linha).
 - **Recusas:** se o Claude recusar um pedido por política, a API tenta de novo automaticamente num modelo substituto (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`).
 
-## Guia de estilo
+## Estilo: símbolos, emojis e idioma
 
-O padrão visual (nomes de cargos e canais, emojis, separadores, cores e embeds) fica na seção **`# GUIA DE ESTILO`** de [`src/prompts/system.md`](src/prompts/system.md). Por enquanto ela tem um estilo de exemplo: substitua pelos seus exemplos.
+Os dois comandos têm duas opções de estilo, ambas opcionais:
+
+| Opção | O que faz |
+|---|---|
+| `simbolos` | Os símbolos decorativos que você quer, ex.: `・ ┃ 「 」 ✦`. O Claude usa **só esses** e distribui entre separador de canal, moldura de categoria, separador de cargo e marcador. Escreva `criativo` (ou "seja criativo", "livre", "você escolhe") para o Claude montar um kit sozinho. Se deixar vazio, o Claude também escolhe, a menos que o próprio pedido fale de símbolos. |
+| `idioma` | O idioma do conteúdo do servidor, ex.: `português`, `English`, `español`. Se deixar vazio, vale o idioma em que o pedido foi escrito. |
+
+Os **emojis**, as cores, os nomes e os textos ficam sempre por conta do Claude, combinando com o tema, a menos que você peça algo específico no texto (ex.: "sem emojis").
+
+```
+/montar descricao: servidor de anime fofo simbolos: criativo
+/montar descricao: servidor de RPG medieval simbolos: ⊱ ⊰ ❧ ☩ idioma: português
+/editar pedido: crie uma categoria de eventos simbolos: 「 」 ・
+```
+
+O plano sempre começa com a seção **🎨 Estilo**, que mostra o idioma, o kit de símbolos e exemplos de nomes, para você conferir antes de confirmar.
+
+O guia completo fica na seção `# GUIA DE ESTILO` de [`src/prompts/system.md`](src/prompts/system.md). Ele inclui uma **biblioteca com centenas de símbolos Unicode** (separadores, molduras, linhas, estrelas, marcadores, números e letras estilizadas) e **kits prontos** (minimalista, elegante, fofo, gamer, medieval, celestial, corporativo, anime). No fim do guia há o espaço **"Regras fixas do dono do bot"**: use-o para escrever um padrão que valha sempre, como "toda categoria usa 「 」".
 
 ## Estrutura
 
