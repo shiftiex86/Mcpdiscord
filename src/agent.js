@@ -6,6 +6,7 @@ import { logger } from './logger.js';
 import { actionQueue } from './queue.js';
 import { TOOL_DEFINITIONS, toolsByName, validateInput } from './tools/index.js';
 import { ToolError, formatError } from './tools/_helpers.js';
+import { findMalformedStrings, safeSlice, wellFormed, wellFormedDeep } from './text.js';
 
 const SYSTEM_PROMPT = fs.readFileSync(new URL('./prompts/system.md', import.meta.url), 'utf8');
 
@@ -154,7 +155,12 @@ export class ServerAgent {
       }
 
       // Sempre acrescenta o conteúdo completo (inclui thinking/fallback blocks, que precisam voltar intactos).
-      this.messages.push({ role: 'assistant', content: message.content });
+      // Exceção: se a resposta trouxer um emoji corrompido (surrogate isolado) num input de tool, o corpo
+      // da próxima requisição seria JSON inválido (400 "unexpected end of hex escape"); nesse caso raro
+      // trocamos só o caractere quebrado por U+FFFD. O tool_use em si é recusado em #runTool.
+      const content = wellFormedDeep(message.content);
+      if (content !== message.content) logger.warn(this.scope, 'Resposta com surrogate isolado; texto saneado antes de reenviar');
+      this.messages.push({ role: 'assistant', content });
 
       if (message.stop_reason === 'pause_turn') continue;
       if (toolUses.length === 0) return { text: extractText(message) };
@@ -234,16 +240,23 @@ export class ServerAgent {
   async #runTool(block, planAlreadySubmitted) {
     const fail = (content) => {
       this.stats.errors += 1;
-      return { result: { type: 'tool_result', tool_use_id: block.id, is_error: true, content } };
+      return { result: { type: 'tool_result', tool_use_id: block.id, is_error: true, content: wellFormed(content) } };
     };
     const tool = toolsByName.get(block.name);
     if (!tool) return fail(`Tool desconhecida: ${block.name}`);
 
     // Com eager_input_streaming a API não valida o input: validamos aqui antes de executar.
     const errors = validateInput(tool.definition.input_schema, block.input);
+    const malformed = findMalformedStrings(block.input);
+    if (malformed.length) {
+      errors.push(
+        `${malformed.join(', ')} contém um emoji/símbolo corrompido (surrogate UTF-16 isolado). ` +
+          'Reenvie escrevendo os caracteres diretamente, sem sequências de escape \\u',
+      );
+    }
     if (errors.length) {
       logger.warn(this.scope, `Input inválido para ${block.name}`, { errors });
-      return fail(`INVALID_INPUT: ${errors.join('; ')}. Input recebido: ${JSON.stringify(block.input).slice(0, 1500)}`);
+      return fail(`INVALID_INPUT: ${errors.join('; ')}. Input recebido: ${safeSlice(JSON.stringify(wellFormedDeep(block.input)), 1500)}`);
     }
 
     // Regras de fase
@@ -290,7 +303,7 @@ export class ServerAgent {
         logger.info(this.scope, `OK ${block.name}`, { input: block.input, output });
         this.#notify({ ok: true, tool: block.name, input: block.input, output });
       }
-      return { result: { type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(output) } };
+      return { result: { type: 'tool_result', tool_use_id: block.id, content: wellFormed(JSON.stringify(output)) } };
     } catch (err) {
       const message = formatError(err);
       if (!(err instanceof ToolError)) logger.error(this.scope, `Falha em ${block.name}`, { input: block.input, error: message });

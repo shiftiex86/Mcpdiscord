@@ -8,6 +8,7 @@ import {
   PermissionsBitField,
   resolveColor,
 } from 'discord.js';
+import { safeSlice } from '../text.js';
 
 /** Erro de validação/regra de negócio: volta ao Claude como tool_result com is_error. */
 export class ToolError extends Error {}
@@ -301,7 +302,7 @@ export const labelOf = (map, value) => Object.entries(map).find(([, v]) => v ===
 export function formatError(err) {
   if (err instanceof ToolError) return err.message;
   if (err instanceof DiscordAPIError) {
-    const details = err.rawError?.errors ? ` Detalhes: ${JSON.stringify(err.rawError.errors).slice(0, 800)}` : '';
+    const details = err.rawError?.errors ? ` Detalhes: ${safeSlice(JSON.stringify(err.rawError.errors), 800)}` : '';
     return `Erro da API do Discord (HTTP ${err.status}, código ${err.code}): ${err.message}.${details}`;
   }
   return `Erro inesperado: ${err?.message ?? String(err)}`;
