@@ -91,6 +91,9 @@ function describeError(err) {
   if (err instanceof Anthropic.BadRequestError) return `Requisição recusada pela API da Anthropic: ${err.message}`;
   if (err instanceof Anthropic.APIConnectionError) return 'Não foi possível conectar à API da Anthropic.';
   if (err instanceof Anthropic.APIError) return `Erro da API da Anthropic (HTTP ${err.status}): ${err.message}`;
+  if (err instanceof Anthropic.AnthropicError) {
+    return 'O Claude gerou uma resposta malformada várias vezes seguidas. Tente o comando de novo.';
+  }
   return `Erro inesperado: ${err?.message ?? err}`;
 }
 

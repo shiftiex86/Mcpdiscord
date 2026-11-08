@@ -27,7 +27,7 @@ await test('definições de tools', () => {
   for (const t of TOOL_DEFINITIONS) {
     assert.ok(/^[a-z_]+$/.test(t.name));
     assert.equal(t.input_schema.type, 'object');
-    assert.equal(t.eager_input_streaming, true);
+    assert.equal(t.eager_input_streaming, undefined); // a API valida o JSON dos inputs
     assert.ok(t.description.length > 20);
   }
 });

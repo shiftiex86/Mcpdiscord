@@ -245,7 +245,7 @@ export class ServerAgent {
     const tool = toolsByName.get(block.name);
     if (!tool) return fail(`Tool desconhecida: ${block.name}`);
 
-    // Com eager_input_streaming a API não valida o input: validamos aqui antes de executar.
+    // Defesa extra: valida o input contra o schema antes de executar.
     const errors = validateInput(tool.definition.input_schema, block.input);
     const malformed = findMalformedStrings(block.input);
     if (malformed.length) {
