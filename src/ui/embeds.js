@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+import { truncate } from '../text.js';
 
 export const COLORS = {
   info: 0x5865f2,
@@ -11,7 +12,6 @@ export const COLORS = {
 
 export const BUTTON_IDS = { confirm: 'plan:confirm', cancel: 'plan:cancel' };
 
-const truncate = (text, max) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
 /** Quebra linhas em blocos de até `max` caracteres (limite de valor de campo do embed). */
 function chunkLines(lines, max = 1024) {

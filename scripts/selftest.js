@@ -13,6 +13,7 @@ const { parsePermissions, parseColor } = await import('../src/tools/_helpers.js'
 const { planEmbeds, progressLine, summaryEmbed } = await import('../src/ui/embeds.js');
 const { commands } = await import('../src/commands/index.js');
 const { ServerAgent } = await import('../src/agent.js');
+const { safeSlice, truncate, findMalformedStrings } = await import('../src/text.js');
 
 let passed = 0;
 const test = async (name, fn) => {
@@ -195,6 +196,48 @@ await test('loop agêntico: plano → bloqueio de escrita → aprovação → ex
   assert.equal(first.fallbacks, 'default');
   // O bloco de thinking voltou intacto no histórico.
   assert.ok(requests[2].messages.some((m) => m.role === 'assistant' && m.content.some((b) => b.type === 'thinking')));
+});
+
+await test('cortes de texto não partem emojis (surrogates)', () => {
+  assert.equal(safeSlice('🌸🌸', 3), '🌸');
+  assert.ok(safeSlice('a🌸'.repeat(1000), 1501).isWellFormed());
+  assert.ok(truncate('🎮'.repeat(300), 256).isWellFormed());
+  // O JSON que vai para a API nunca pode conter "\ud83c" sozinho.
+  assert.doesNotMatch(JSON.stringify({ s: safeSlice('x🌸', 2) }), /\\ud8/);
+});
+
+await test('emoji corrompido no input de tool vira erro e a requisição seguinte é JSON válido', async () => {
+  const script = [
+    { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'm1', name: 'edit_role', input: { role: 'x', name: 'Flor \ud83c' } }] },
+    { stop_reason: 'end_turn', content: [{ type: 'text', text: 'ok' }] },
+  ];
+  const requests = [];
+  const fakeClient = {
+    beta: {
+      messages: {
+        stream(body) {
+          requests.push(structuredClone(body));
+          const next = script.shift();
+          return { finalMessage: async () => ({ model: body.model, usage: {}, ...next }) };
+        },
+      },
+    },
+  };
+  const agent = new ServerAgent({
+    guild: { id: '1', name: 'G' },
+    user: { id: '2', tag: 'u' },
+    mode: 'editar',
+    request: 'x'.repeat(10) + '🌸'.repeat(900),
+    client: fakeClient,
+  });
+  const out = await agent.runPlanning();
+  assert.equal(out.text, 'ok');
+  const second = requests[1];
+  assert.deepEqual(findMalformedStrings(second), []);
+  assert.doesNotMatch(JSON.stringify(second), /\\ud[89ab][0-9a-f]{2}(?!\\ud[c-f])/i);
+  const result = second.messages.at(-1).content[0];
+  assert.equal(result.is_error, true);
+  assert.match(result.content, /corrompido/);
 });
 
 console.log(`\n${passed} testes passaram.`);
