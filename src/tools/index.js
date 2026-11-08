@@ -34,10 +34,12 @@ const TOOLS = [
 export const toolsByName = new Map(TOOLS.map((t) => [t.definition.name, t]));
 
 /**
- * Definições enviadas ao Claude. As requisições são em streaming, então cada tool usa
- * eager_input_streaming — e por isso validamos cada input contra o schema antes de executar.
+ * Definições enviadas ao Claude. NÃO usamos eager_input_streaming: com ele a API repassa o JSON
+ * cru do modelo sem validar, e inputs malformados quebram o parse no SDK ("Unable to parse tool
+ * parameter JSON"). Os inputs aqui são pequenos, então o buffer da API não custa nada perceptível.
+ * Mesmo assim, cada input ainda é validado contra o schema antes de executar.
  */
-export const TOOL_DEFINITIONS = TOOLS.map((t) => ({ ...t.definition, eager_input_streaming: true }));
+export const TOOL_DEFINITIONS = TOOLS.map((t) => t.definition);
 
 /** Validador mínimo de JSON Schema (o subconjunto usado nas tools). Retorna lista de erros. */
 export function validateInput(schema, value, path = 'input') {
